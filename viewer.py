@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import subprocess
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
 from pathlib import Path
@@ -29,6 +30,10 @@ class ShortcutsViewer:
         self.scroll_animation_id = None
         self.scroll_velocity = 0
         self.scroll_target = 0
+
+        # Shortcut row tracking for hover and click
+        self.shortcut_rows = []  # List of (start_line, end_line, command)
+        self.current_hover_row = None
 
         main_frame = tk.Frame(root, bg=self.theme.background)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -98,6 +103,9 @@ class ShortcutsViewer:
         self.text_widget.tag_config('wrap_indicator', foreground=self.theme.bright_black, font=(self.theme.font_family, self.font_size))
         self.text_widget.tag_config('search_highlight', background=self.theme.normal_yellow, foreground=self.theme.background)
         self.text_widget.tag_config('search_current', background=self.theme.bright_green, foreground=self.theme.background)
+        self.text_widget.tag_config('hover_highlight', background=self.lighten_color(self.theme.background, 0.1))
+        self.text_widget.tag_raise('search_highlight')
+        self.text_widget.tag_raise('search_current')
 
         self.text_widget.bind('<<Copy>>', self.handle_copy)
 
@@ -118,6 +126,11 @@ class ShortcutsViewer:
         self.text_widget.bind('<MouseWheel>', self.on_mousewheel)  # Windows/Mac
         self.text_widget.bind('<Button-4>', self.on_mousewheel_linux_up)  # Linux scroll up
         self.text_widget.bind('<Button-5>', self.on_mousewheel_linux_down)  # Linux scroll down
+
+        # Mouse hover and click for command execution
+        self.text_widget.bind('<Motion>', self.on_mouse_motion)
+        self.text_widget.bind('<Button-1>', self.on_mouse_click)
+        self.text_widget.bind('<Leave>', self.on_mouse_leave)
 
         self.load_shortcuts()
 
@@ -188,6 +201,10 @@ class ShortcutsViewer:
                 self.text_widget.insert(tk.END, "─" * 80 + "\n", 'separator')
 
                 for keybinding, command in group.shortcuts:
+                    # Record the start position of this shortcut row
+                    start_pos = self.text_widget.index(tk.INSERT)
+                    start_line = int(start_pos.split('.')[0])
+
                     command_lines = self.wrap_command_text(command)
 
                     self.text_widget.insert(tk.END, keybinding, 'keybinding')
@@ -198,6 +215,13 @@ class ShortcutsViewer:
                         self.text_widget.insert(tk.END, "\t")
                         self.text_widget.insert(tk.END, "↳ ", 'wrap_indicator')
                         self.text_widget.insert(tk.END, f"{continuation_line}\n", 'command')
+
+                    # Record the end position of this shortcut row
+                    end_pos = self.text_widget.index(tk.INSERT)
+                    end_line = int(end_pos.split('.')[0])
+
+                    # Store the shortcut row info (start_line, end_line, command)
+                    self.shortcut_rows.append((start_line, end_line - 1, command))
 
                 self.text_widget.insert(tk.END, "\n")
 
@@ -366,6 +390,54 @@ class ShortcutsViewer:
 
         # Continue animation
         self.scroll_animation_id = self.root.after(16, self.animate_scroll)  # ~60 FPS
+
+    def get_row_at_position(self, x, y):
+        """Get the shortcut row index at the given mouse position, or None."""
+        index = self.text_widget.index(f"@{x},{y}")
+        line = int(index.split('.')[0])
+
+        for i, (start_line, end_line, command) in enumerate(self.shortcut_rows):
+            if start_line <= line <= end_line:
+                return i
+        return None
+
+    def on_mouse_motion(self, event):
+        """Handle mouse motion to highlight rows on hover."""
+        row_index = self.get_row_at_position(event.x, event.y)
+
+        if row_index != self.current_hover_row:
+            # Clear previous hover highlight
+            self.text_widget.tag_remove('hover_highlight', '1.0', tk.END)
+
+            if row_index is not None:
+                # Highlight the new row
+                start_line, end_line, _ = self.shortcut_rows[row_index]
+                self.text_widget.tag_add('hover_highlight', f"{start_line}.0", f"{end_line}.end")
+                self.text_widget.config(cursor="hand2")
+            else:
+                self.text_widget.config(cursor="")
+
+            self.current_hover_row = row_index
+
+    def on_mouse_leave(self, event):
+        """Clear hover highlight when mouse leaves the widget."""
+        self.text_widget.tag_remove('hover_highlight', '1.0', tk.END)
+        self.text_widget.config(cursor="")
+        self.current_hover_row = None
+
+    def on_mouse_click(self, event):
+        """Execute the command when clicking on a shortcut row."""
+        row_index = self.get_row_at_position(event.x, event.y)
+
+        if row_index is not None:
+            _, _, command = self.shortcut_rows[row_index]
+            try:
+                # Execute the command in the background
+                subprocess.Popen(command, shell=True, start_new_session=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to execute command: {e}")
+            return "break"
 
 
 def main():

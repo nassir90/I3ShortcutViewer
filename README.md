@@ -18,6 +18,8 @@ Scrolling is possible using the mouse, arrow keys, page up buttons and C-n and C
 
 Pressing the escape key exits the application.
 
+Hovering over the command of a keybinding highlights the entire row. Clicking on such a row executes the command.
+
 ![Example Screenshot](screenshots/example.png)
 
 ## Preparing your Shortcuts File
