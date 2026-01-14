@@ -54,3 +54,12 @@ Separate the user shortcuts that you care about into a smaller "shortcuts" file 
 
 Ask your agent to look at the config file, reproduce it with everything categoriesd under `(###)` hheaders and make sure that it makes a python script that ensures that no shortcuts have been left behind by the categorisation. Copy the new file to your shortcuts file.
 
+
+### Example of a Config File
+
+    ### Apps
+    $mod+a alacritty
+    
+    ### Commands
+    $mod+BrightnessDown brightness_cli -10
+
