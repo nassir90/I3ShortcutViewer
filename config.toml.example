@@ -1,0 +1,24 @@
+# i3 Shortcuts Viewer Configuration
+#
+# Place this file in one of these locations:
+#   1. Same directory as the script (./config.toml)
+#   2. ~/.config/i3-shortcut-viewer/config.toml
+#
+# The script directory takes precedence over ~/.config location.
+
+[font]
+# Font size for normal text (shortcuts and commands)
+# Default: 10
+size = 10
+
+# Font size for section headers
+# Default: 12
+header_size = 12
+
+[display]
+# Wrap long command text to fit in the window
+# When true: Commands wrap at word boundaries with continuation indicator (↳)
+# When false: Commands extend horizontally with scrollbar
+# Note: The ↳ indicator is automatically stripped when copying text
+# Default: true
+wrap_command = true
